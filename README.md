@@ -1,91 +1,164 @@
-# Squelette M0-B1 — Service de criticité maintenance prédictive
+# Service de criticité maintenance prédictive (M0-B1)
 
-> Repo de départ à cloner pour le brief M0-B1 (FastIA — intégration d'un modèle
-> scikit-learn pré-entraîné dans une API REST). **Doit tourner dès le clone.**
+API FastAPI exposant un modèle scikit-learn de classification de criticité d'incidents machine (3 classes : `basse`, `moyenne`, `haute`).
 
-## 🎯 Ce que tu trouves dans ce repo
+---
+
+## Architecture
 
 ```
-squelette/
+.
 ├── app/
 │   ├── __init__.py
-│   ├── main.py             ← FastAPI : /health (✅ fonctionnel) + /predict (à compléter)
-│   └── schemas.py          ← Pydantic : MachineInput, PredictionResponse
+│   ├── main.py          # Application FastAPI (lifespan, routes /health et /predict)
+│   └── schemas.py       # Schémas Pydantic (MachineInput, PredictionResponse, HealthResponse)
 ├── data/
-│   ├── generate_dataset.py ← script de régénération du dataset (déjà exécuté)
-│   └── maintenance_data.csv ← dataset synthétique 6 500 lignes
+│   ├── generate_dataset.py  # Génération du dataset synthétique
+│   └── maintenance_data.csv # Dataset d'entraînement
 ├── model/
-│   ├── train_baseline.py   ← script d'entraînement (déjà exécuté)
-│   └── model.joblib        ← modèle pré-entraîné, ~6.6 Mo (à charger au démarrage)
+│   ├── model.joblib         # Modèle pré-entraîné (pipeline scikit-learn)
+│   └── train_baseline.py    # Script d'entraînement du modèle baseline
+├── logs/                    # Logs applicatifs générés à l'exécution
 ├── tests/
 │   ├── __init__.py
-│   └── test_health.py      ← test pytest fonctionnel au clone (✅)
-├── Dockerfile              ← squelette commenté à compléter
-├── requirements.txt        ← dépendances figées
-├── .gitignore
-└── README.md               ← (ce fichier)
+│   ├── test_health.py       # Tests fonctionnels de /health
+│   └── test_predict.py      # Tests fonctionnels de /predict
+├── Dockerfile               # Build multi-stage (builder + image de production)
+├── requirements.txt         # Dépendances complètes (dev + prod)
+└── requirements-prod.txt    # Dépendances de production uniquement
 ```
 
-## ⚙️ Pré-requis
+### Routes exposées
 
-- Python **3.11+**
-- Un environnement virtuel **activé** (cf. mini-cours `01_Setup_environnement_essentiel.md`
-  du brief P0)
+| Méthode | Route      | Description                                  |
+|---------|------------|----------------------------------------------|
+| `GET`   | `/health`  | Santé du service et état du modèle chargé    |
+| `POST`  | `/predict` | Prédiction de criticité à partir des features |
+| `GET`   | `/docs`    | Documentation interactive (Swagger UI)       |
 
-## 🚀 Démarrage en 3 commandes
+### Entrée `/predict`
+
+| Champ                      | Type    | Description                                       |
+|----------------------------|---------|---------------------------------------------------|
+| `type_machine`             | string  | `pompe`, `compresseur`, `convoyeur`, `presse`, `four` |
+| `age_machine_jours`        | int     | Âge de la machine en jours (0–10 000)             |
+| `derniere_maintenance_jours` | int   | Jours depuis la dernière maintenance (0–365)      |
+| `temperature_moyenne`      | float   | Température moyenne sur 7 jours (°C)              |
+| `vibration_moyenne`        | float   | Vibration moyenne sur 7 jours (mm/s, ≥ 0)        |
+| `pression_moyenne`         | float   | Pression moyenne sur 7 jours (bar, ≥ 0)          |
+| `nb_incidents_3_mois`      | int     | Nombre d'incidents sur les 3 derniers mois (≥ 0) |
+
+---
+
+## Installation
+
+### Prérequis
+
+- Python 3.11+
+- (optionnel) Docker ou Podman pour le déploiement conteneurisé
+
+### Environnement local
 
 ```bash
-# 1. Installer les dépendances dans ton env virtuel activé
+# Cloner le projet et créer un environnement virtuel
+python -m venv .venv
+.venv\Scripts\activate        # Windows
+# source .venv/bin/activate   # Linux/macOS
+
+# Installer les dépendances
 pip install -r requirements.txt
-
-# 2. Lancer l'API en mode dev (rechargement automatique sur modification)
-uvicorn app.main:app --reload
-
-# 3. Dans un autre terminal : lancer les tests
-pytest
 ```
 
-À l'étape 2, tu peux ouvrir <http://localhost:8000/docs> pour voir l'interface
-Swagger générée automatiquement par FastAPI. L'endpoint `/health` doit déjà répondre
-`{"status": "ok", "model_loaded": true}`.
+---
 
-## ✏️ Ce que tu dois compléter
+## Lancement
 
-| Fichier | Tâche |
-|---|---|
-| `app/main.py` | Implémenter l'endpoint **POST `/predict`** (TODO marqué dans le code) |
-| `tests/` | Ajouter au moins **2 tests** pour `/predict` (cas valide + cas d'erreur 422) |
-| `Dockerfile` | Compléter le squelette commenté (cf. mini-cours `02_Docker_essentiel.md`) |
-| `app/main.py` | Ajouter du **logging Loguru** sur chaque requête (cf. `03_Loguru_essentiel.md`) |
-
-## 🔁 Régénérer le dataset ou le modèle (optionnel)
-
-Le dataset et le modèle sont déjà fournis. Tu n'as **pas besoin** de les
-régénérer pour le brief. Si tu veux le faire :
+### En local (développement)
 
 ```bash
-# Régénérer le dataset (déterministe, random_state=42)
-python data/generate_dataset.py
+uvicorn app.main:app --reload
+```
 
-# Réentraîner le modèle baseline (~30 secondes)
+L'API est accessible sur [http://localhost:8000](http://localhost:8000).  
+La documentation Swagger est disponible sur [http://localhost:8000/docs](http://localhost:8000/docs).
+
+### Avec Docker / Podman
+
+```bash
+# Build de l'image
+docker build -t fastia-maintenance:dev .
+
+# Lancement du conteneur
+docker run --rm -p 8000:8000 fastia-maintenance:dev
+
+# Vérification
+curl http://localhost:8000/health
+```
+
+### Exemple de requête `/predict`
+
+```bash
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type_machine": "compresseur",
+    "age_machine_jours": 1500,
+    "derniere_maintenance_jours": 45,
+    "temperature_moyenne": 68.5,
+    "vibration_moyenne": 3.2,
+    "pression_moyenne": 7.8,
+    "nb_incidents_3_mois": 2
+  }'
+```
+
+Réponse attendue :
+
+```json
+{
+  "criticite": "moyenne",
+  "probabilites": {
+    "basse": 0.12,
+    "moyenne": 0.71,
+    "haute": 0.17
+  }
+}
+```
+
+---
+
+## Tests
+
+Les tests utilisent `pytest` avec le client de test intégré à FastAPI (`TestClient`).
+
+```bash
+# Lancer tous les tests
+pytest
+
+# Avec détail des tests
+pytest -v
+
+# Avec couverture de code
+pytest --cov=app
+```
+
+### Fichiers de tests
+
+| Fichier                  | Couverture                                                      |
+|--------------------------|-----------------------------------------------------------------|
+| `tests/test_health.py`   | Statut 200, schéma de réponse de `/health`                     |
+| `tests/test_predict.py`  | Prédiction valide, validation 422 sur entrée invalide, schéma  |
+
+---
+
+## Modèle
+
+Le modèle pré-entraîné (`model/model.joblib`) est un pipeline scikit-learn combinant un `ColumnTransformer` et un `RandomForestClassifier`.
+
+- **Accuracy** : ~80 % en validation croisée stratifiée
+- **Classes** : `basse` (majoritaire), `moyenne`, `haute` (sous-représentée ~10 %)
+
+Pour ré-entraîner le modèle :
+
+```bash
 python model/train_baseline.py
 ```
-
-## 🆘 En cas de problème au démarrage
-
-| Symptôme | Cause probable | Solution |
-|---|---|---|
-| `ModuleNotFoundError` au lancement | env virtuel pas activé ou deps pas installées | `source .venv/bin/activate` puis `pip install -r requirements.txt` |
-| `Modèle introuvable` au démarrage uvicorn | `model.joblib` absent ou mal placé | `python model/train_baseline.py` pour le régénérer |
-| `pytest` échoue tout de suite | env virtuel actif ? deps installées ? | idem ligne 1 |
-| Port 8000 déjà utilisé | un autre service tourne dessus | `uvicorn app.main:app --reload --port 8001` |
-
-## 📚 Pour aller plus loin
-
-Le brief M0-B1 (`brief.md`) liste les ressources et les compétences visées.
-Les mini-cours synthétiques sont dans `briefs/M0-B1/ressources/` :
-
-- `01_FastAPI_essentiel.md`
-- `02_Docker_essentiel.md`
-- `03_Loguru_essentiel.md`
-- `04_Pytest_API_essentiel.md`
