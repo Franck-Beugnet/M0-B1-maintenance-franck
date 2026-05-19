@@ -1,0 +1,17 @@
+# Dépendances de production uniquement (sans pytest/httpx/faker)
+
+# API + serveur
+fastapi>=0.115,<1
+uvicorn[standard]>=0.32,<1
+
+# Validation
+pydantic>=2.10,<3
+
+# ML
+scikit-learn>=1.7,<2
+joblib>=1.5,<2
+numpy>=2,<3
+pandas>=2.2,<4
+
+# Journalisation
+loguru>=0.7,<1

@@ -1,0 +1,31 @@
+# Environnements virtuels
+.env*/
+venv/
+.venv/
+
+# Git
+.git/
+.gitignore
+
+# Tests et cache
+tests/
+.pytest_cache/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+
+# Données brutes et scripts de génération
+data/
+
+# Logs
+logs/
+
+# Documentation
+ressources/
+README*.md
+
+# Fichiers de développement
+*.ipynb
+
+# Dépendances dev (non utilisées par le build)
+requirements.txt

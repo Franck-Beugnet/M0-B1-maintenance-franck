@@ -42,8 +42,6 @@ def test_machine_invalid():
         assert response.status_code == 422  # Unprocessable Entity for validation error
 
 
-# --- Schéma de réponse ---
-
 def test_response_schema_keys():
     """La réponse doit contenir exactement les clés 'criticite' et 'probabilites'."""
     with TestClient(app) as client:
@@ -197,8 +195,6 @@ def test_vibration_negative_retourne_422():
         )
         assert response.status_code == 422
 
-
-# --- Cas limites métier ---
 
 def test_machine_neuve_zero_incidents():
     """Une machine neuve sans incident doit retourner une criticité valide."""
