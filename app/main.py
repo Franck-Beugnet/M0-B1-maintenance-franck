@@ -147,24 +147,77 @@ def predict_explain(item: MachineInput) -> dict:
     class_probabilities = dict(zip(model.classes_, probabilities))
     logger.info(f"Prédiction interne /explain : {predicted_class}")
 
+    # --- contexte métier dérivé des seuils observés dans le dataset ---
+    age_ans = item.age_machine_jours // 365
+    age_ctx = (
+        "machine jeune (faible usure)"
+        if item.age_machine_jours < 3_000
+        else "machine vieillissante (usure modérée)"
+        if item.age_machine_jours < 5_000
+        else "machine très ancienne (usure avancée)"
+    )
+    vibration_ctx = (
+        "normale (< 3 mm/s, typique criticité basse)"
+        if item.vibration_moyenne < 3.0
+        else "élevée (3–4 mm/s, typique criticité moyenne)"
+        if item.vibration_moyenne < 4.0
+        else "critique (> 4 mm/s, typique criticité haute)"
+    )
+    maintenance_ctx = (
+        "récente (< 90 j)"
+        if item.derniere_maintenance_jours < 90
+        else "en limite (90–130 j)"
+        if item.derniere_maintenance_jours < 130
+        else "en retard (> 130 j)"
+    )
+    incidents_ctx = (
+        "faible (0–2)"
+        if item.nb_incidents_3_mois <= 2
+        else "préoccupant (3–4)"
+        if item.nb_incidents_3_mois <= 4
+        else "alarmant (> 4)"
+    )
+
     # --- prompt Ollama ---
     prob_fmt = ", ".join(
         f"{cls}={prob:.0%}" for cls, prob in sorted(class_probabilities.items())
     )
+    criticite_def = {
+        "basse":   "la machine est en bon état général, aucune urgence détectée",
+        "moyenne": "la machine présente des signes de dégradation, surveillance accrue requise",
+        "haute":   "la machine présente un risque d'incident grave, intervention prioritaire requise",
+    }
+    consigne_ton = {
+        "basse": (
+            "Explique pourquoi les indicateurs sont dans les normes et confirment l'absence d'urgence. "
+            "Ne suggère PAS d'intervention urgente ni de risque de panne."
+        ),
+        "moyenne": (
+            "Identifie les indicateurs qui s'écartent légèrement des normes et justifient une surveillance. "
+            "Préconise une planification de maintenance à court terme, sans alarmisme."
+        ),
+        "haute": (
+            "Identifie clairement les indicateurs critiques (avec leurs valeurs) qui justifient l'urgence. "
+            "Préconise une intervention immédiate et concrète."
+        ),
+    }
     prompt = (
         "Tu es un expert en maintenance industrielle prédictive. "
-        f"Une machine de type '{item.type_machine}' présente les caractéristiques suivantes :\n"
-        f"- Âge : {item.age_machine_jours} jours\n"
-        f"- Dernière maintenance : {item.derniere_maintenance_jours} jours\n"
-        f"- Température moyenne (7j) : {item.temperature_moyenne} °C\n"
-        f"- Vibration moyenne (7j) : {item.vibration_moyenne} mm/s\n"
-        f"- Pression moyenne (7j) : {item.pression_moyenne} bar\n"
-        f"- Incidents sur 3 mois : {item.nb_incidents_3_mois}\n\n"
-        f"Le modèle a prédit une criticité '{predicted_class}' "
-        f"avec les probabilités suivantes : {prob_fmt}.\n\n"
-        "Explique en français, en 2 à 3 phrases concises, pourquoi cette criticité "
-        "a été attribuée et quelles actions de maintenance sont conseillées. "
-        "Réponds uniquement avec l'explication, sans titre ni introduction."
+        "Un modèle ML a calculé un score composite de sévérité pour prioriser les interventions.\n\n"
+        f"RÉSULTAT DU MODÈLE : criticité = {predicted_class.upper()} ({prob_fmt})\n"
+        f"Ce niveau signifie : {criticite_def[predicted_class]}\n"
+        "IMPORTANT : ton explication DOIT être cohérente avec ce niveau de criticité. "
+        "Ne le contredis pas.\n\n"
+        "Données de la machine avec interprétation par rapport au parc :\n"
+        f"- Type : {item.type_machine} — {age_ans} ans ({age_ctx})\n"
+        f"- Vibration moyenne (7j) : {item.vibration_moyenne} mm/s → {vibration_ctx}\n"
+        f"- Dernière maintenance : il y a {item.derniere_maintenance_jours} jours → {maintenance_ctx}\n"
+        f"- Incidents sur 3 mois : {item.nb_incidents_3_mois} → {incidents_ctx}\n"
+        f"- Température moyenne (7j) : {item.temperature_moyenne} °C (peu discriminante)\n"
+        f"- Pression moyenne (7j) : {item.pression_moyenne} bar (peu discriminante)\n\n"
+        f"Consigne de rédaction : {consigne_ton[predicted_class]}\n"
+        "Rédige 2 à 3 phrases en français, en citant les valeurs numériques clés. "
+        "Réponds uniquement avec l'explication, sans titre ni liste."
     )
 
     # --- appel Ollama ---
