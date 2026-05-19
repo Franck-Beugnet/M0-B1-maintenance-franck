@@ -1,0 +1,22 @@
+# API + serveur
+fastapi>=0.115,<1
+uvicorn[standard]>=0.32,<1
+
+# Validation
+pydantic>=2.10,<3
+
+# ML : doit correspondre à la version utilisée pour entraîner model.joblib
+scikit-learn>=1.7,<2
+joblib>=1.5,<2
+numpy>=2,<3
+pandas>=2.2,<4
+
+# Journalisation (préférée au logging stdlib)
+loguru>=0.7,<1
+
+# Tests
+pytest>=8,<9
+httpx>=0.27,<1
+
+# (Optionnel) régénérer le dataset
+faker>=30,<50

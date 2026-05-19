@@ -1,0 +1,47 @@
+# Environnements virtuels
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets / config locale
+.env
+.env.*
+!.env.example
+
+# Logs (générés à l'exécution par Loguru)
+logs/
+*.log
+
+# Build / distribution
+build/
+dist/
+*.egg-info/
+
+# ⚠️ Fichiers volontairement COMMITTÉS dans ce squelette pour qu'il tourne au clone :
+#   - data/maintenance_data.csv  (~335 Ko, dataset toy)
+#   - model/model.joblib         (~6.6 Mo, modèle pré-entraîné)
+# Si tu régénères : `python data/generate_dataset.py` puis `python model/train_baseline.py`.
