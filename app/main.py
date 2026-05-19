@@ -94,21 +94,6 @@ def health() -> HealthResponse:
 @logger.catch
 def predict(item: MachineInput) -> PredictionResponse:
     """Prédit la criticité d'une machine à partir de ses caractéristiques.
-
-    🎯 **À COMPLÉTER PAR L'APPRENANT.**
-
-    Indices d'implémentation :
-
-    1. Construire un DataFrame pandas à 1 ligne à partir de `item.model_dump()`.
-       Le pipeline scikit-learn attend les colonnes dans le même ordre qu'à
-       l'entraînement (cf. `model/train_baseline.py`, `NUM_FEATURES` + `CAT_FEATURES`).
-    2. Récupérer le modèle via `state["model"]`.
-    3. Appeler `model.predict(df)[0]` pour obtenir la classe prédite (str).
-    4. Appeler `model.predict_proba(df)[0]` pour obtenir les probabilités.
-       Les classes correspondantes sont dans `model.classes_`.
-    5. Construire et retourner un `PredictionResponse`.
-    6. Logger l'entrée + la classe prédite + le temps de réponse via Loguru.
-
     Args:
         item: caractéristiques de la machine (cf. `schemas.MachineInput`).
 
